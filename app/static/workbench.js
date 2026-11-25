@@ -51,6 +51,7 @@
       ['精确重复', values.counts.duplicates], ['忽略行', values.counts.ignored], ['计算条目', values.counts.computed]
     ].map(function (row) { return '<div class="ledger-row"><span>' + row[0] + '</span><strong>' + row[1] + '</strong></div>'; }).join('') +
       '<div class="ledger-row"><span>' + esc(values.metric_field) + '</span><strong>' + esc(values.metric_total) + '</strong></div>' +
+      (values.amount_total ? '<div class="ledger-row"><span>应计费分合计</span><strong>' + esc(values.amount_total) + '</strong></div>' : '') +
       values.checks.map(function (check) { return '<div class="ledger-row"><span>' + esc(check.label) + '</span><strong class="' + (check.ok ? 'check-ok' : 'check-bad') + '">' + (check.ok ? '通过' : '异常') + '</strong></div>'; }).join('');
   }
   function render(data) {
@@ -93,14 +94,69 @@
       state.run = run;
       state.approved = run.status === 'APPROVED';
       render(run);
-      $('run-status').textContent = run.status + ' · rev ' + run.revision;
-      $('revision').textContent = 'rev ' + run.revision;
-      $('sign').disabled = run.summary.REJECT > 0 || state.approved;
-      $('hold').disabled = state.approved;
-      $('download').hidden = !state.approved;
-      if (state.approved) $('download').href = '/api/runs/' + run.run_id + '/evidence';
+      syncReviewUI(run);
     } catch (error) { setNotice(error.message); }
     finally { $('run').disabled = false; }
+  }
+  function syncReviewUI(run) {
+    $('run-status').textContent = run.status + ' · rev ' + run.revision;
+    $('revision').textContent = 'rev ' + run.revision;
+    $('sign').disabled = run.summary.REJECT > 0 || state.approved;
+    $('hold').disabled = state.approved;
+    $('download').hidden = !state.approved;
+    $('amend-box').hidden = !state.approved;
+    $('version-box').hidden = !state.approved;
+    if (state.approved) {
+      $('download').href = '/api/runs/' + run.run_id + '/evidence';
+      $('amend-base').textContent = 'v' + run.revision;
+      loadVersions(run.run_id);
+    } else {
+      $('version-list').innerHTML = '';
+    }
+  }
+  async function loadVersions(runId) {
+    try {
+      var data = await request('/api/runs/' + runId + '/versions');
+      $('version-count').textContent = data.versions.length + ' 版';
+      $('version-list').innerHTML = data.versions.map(function (item) {
+        var current = item.version === data.current_version;
+        var title = (item.kind === 'AMENDMENT' ? '补正 v' : '首发 v') + item.version +
+          (item.base_version ? '（基于 v' + item.base_version + '）' : '');
+        return '<li><div class="version-head"><strong>' + esc(title) + '</strong>' +
+          (current ? '<span class="badge">当期</span>' : '') + '</div>' +
+          '<small class="hint">' + esc(item.created_at) + (item.reason ? ' · ' + esc(item.reason) : '') + '</small>' +
+          '<div class="review-actions"><a href="/api/runs/' + esc(runId) + '/evidence?version=' + item.version +
+          '" target="_blank" rel="noopener">核对凭据</a><code>' + esc(item.digest.slice(0, 12)) + '</code></div></li>';
+      }).join('');
+    } catch (error) { setNotice(error.message); }
+  }
+  async function submitAmendment() {
+    if (!state.run) return;
+    var label = $('amend-label').value.trim();
+    var amount = $('amend-amount').value;
+    if (!label || amount === '') { setNotice('请填写补正条目与更正金额'); return; }
+    var body = {
+      request_key: 'amend-' + Date.now().toString(36),
+      base_version: state.run.revision,
+      reason: $('amend-reason').value.trim(),
+      comment: $('comment').value.trim(),
+      adjustments: [{label: label, amount_cents: Number(amount)}]
+    };
+    try {
+      setNotice('');
+      $('amend').disabled = true;
+      var response = await fetch('/api/runs/' + state.run.run_id + '/amendments', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+      });
+      var data = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      state.run = data;
+      render(data);
+      syncReviewUI(data);
+      $('amend-label').value = ''; $('amend-amount').value = ''; $('amend-reason').value = '';
+      setNotice(response.status === 200 ? '同一补正已签发，返回历史版本' : '补正已签发，当期对账已更新');
+    } catch (error) { setNotice(error.message); }
+    finally { $('amend').disabled = false; }
   }
   async function review(decision) {
     if (!state.run) return;
@@ -111,12 +167,7 @@
       });
       state.run = run;
       state.approved = run.status === 'APPROVED';
-      $('run-status').textContent = run.status + ' · rev ' + run.revision;
-      $('revision').textContent = 'rev ' + run.revision;
-      $('sign').disabled = true;
-      $('hold').disabled = true;
-      $('download').hidden = !state.approved;
-      if (state.approved) $('download').href = '/api/runs/' + run.run_id + '/evidence';
+      syncReviewUI(run);
     } catch (error) { setNotice(error.message); }
   }
   async function boot() {
@@ -132,9 +183,11 @@
     $('run').addEventListener('click', runBatch);
     $('sign').addEventListener('click', function () { review('APPROVED'); });
     $('hold').addEventListener('click', function () { review('HELD'); });
+    $('amend').addEventListener('click', submitAmendment);
     $('profile').addEventListener('change', function () {
       state.run = null; state.approved = false;
       $('sign').disabled = true; $('hold').disabled = true; $('download').hidden = true;
+      $('amend-box').hidden = true; $('version-box').hidden = true;
       $('run-status').textContent = '未执行批次'; $('revision').textContent = 'rev 0';
       loadStage('intake');
     });

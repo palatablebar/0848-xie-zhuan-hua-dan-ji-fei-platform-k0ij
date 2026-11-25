@@ -3,8 +3,9 @@ from flask import Blueprint, abort, jsonify, request, send_file
 from app.catalog import SPEC
 from app.config import SAMPLES
 from app.errors import DomainIssue
-from app.evidence.render import render
-from app.review.service import approve, create_run, serialize
+from app.evidence.render import render, render_snapshot
+from app.review.service import (apply_amendment, approve, create_run, get_version,
+                                list_versions, serialize, serialize_version)
 from app.service import pipeline
 
 
@@ -62,10 +63,42 @@ def review(run_id):
     return jsonify(approve(store(), run_id, data["decision"], data.get("comment", ""), int(data["expected_revision"])))
 
 
+@api.post("/api/runs/<run_id>/amendments")
+def amend(run_id):
+    data = request.get_json(silent=True) or {}
+    run, replayed = apply_amendment(store(), run_id, data)
+    response = jsonify(run)
+    response.status_code = 200 if replayed else 201
+    return response
+
+
+@api.get("/api/runs/<run_id>/versions")
+def versions(run_id):
+    run = serialize(store().get(run_id))
+    if run is None:
+        raise DomainIssue("RUN_NOT_FOUND", 404)
+    return jsonify({"run_id": run_id, "current_version": run["revision"],
+                    "versions": list_versions(store(), run_id)})
+
+
+@api.get("/api/runs/<run_id>/versions/<int:version>")
+def version_detail(run_id, version):
+    return jsonify(serialize_version(get_version(store(), run_id, version)))
+
+
 @api.get("/api/runs/<run_id>/evidence")
 def evidence(run_id):
-    run = serialize(store().get(run_id))
-    return jsonify(render(run))
+    version = request.args.get("version", type=int)
+    if version is None:
+        run = serialize(store().get(run_id))
+        if run is None:
+            raise DomainIssue("RUN_NOT_FOUND", 404)
+        if run["status"] != "APPROVED":
+            raise DomainIssue("NOT_APPROVED", 409)
+        item = get_version(store(), run_id, run["revision"])
+        return jsonify(render_snapshot(item["payload"]))
+    item = get_version(store(), run_id, version)
+    return jsonify(render_snapshot(item["payload"]))
 
 
 @api.get("/api/examples/<profile>")

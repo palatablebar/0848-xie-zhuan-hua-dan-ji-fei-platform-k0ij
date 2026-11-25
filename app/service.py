@@ -69,6 +69,7 @@ def pipeline(profile="dirty", path=None, upto="证据交付"):
         "counts": intake["counts"],
         "issues": issues[:60],
         "rows": rows,
+        "result_rows": [jsonable(item) for item in results] if not raw_stage else [],
         "row_kind": "source" if raw_stage else "result",
         "chart": chart,
         "summary": summary,

@@ -17,6 +17,10 @@ MESSAGES = {
     "STALE_REVIEW": "批次已被更新，请刷新后复核",
     "GATE_BLOCKED": "存在阻断项，不能签发",
     "NOT_APPROVED": "批次尚未签发",
+    "VERSION_NOT_FOUND": "签发版本不存在",
+    "STALE_BASE": "补正基准版本已失效，请基于当前版重新复核",
+    "ADJUSTMENT_INVALID": "补正内容不完整或金额不合法",
+    "ADJUSTMENT_TARGET_NOT_FOUND": "补正条目在当前批次中不存在",
     "BAD_REQUEST": "请求内容不完整",
 }
 

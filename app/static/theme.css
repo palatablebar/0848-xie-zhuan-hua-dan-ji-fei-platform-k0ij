@@ -102,6 +102,14 @@
 .p0848 .review { display: grid; gap: 8px; }
 .p0848 .review textarea { width: 100%; min-height: 62px; resize: vertical; }
 .p0848 .review-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.p0848 .amend, .p0848 .versions { border-top:1px solid var(--line); padding-top:8px; display:grid; gap:6px; }
+.p0848 .amend h3, .p0848 .versions h3 { margin:0; font-size:14px; }
+.p0848 .amend label { color:var(--muted); font-size:12px; }
+.p0848 .versions ul { list-style:none; margin:0; padding:0; display:grid; gap:7px; max-height:260px; overflow:auto; }
+.p0848 .versions li { border:1px solid var(--line); padding:7px 8px; display:grid; gap:4px; }
+.p0848 .version-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.p0848 .badge { background:var(--accent); color:var(--surface); font-size:10px; padding:1px 6px; letter-spacing:.08em; }
+.p0848 .versions code { font-size:11px; color:var(--muted); }
 .p0848 .statusbar {
   display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
   padding: 9px calc(var(--pad) * 1.25); border-top: 1px solid var(--line); color: var(--muted); font-size: 12px;

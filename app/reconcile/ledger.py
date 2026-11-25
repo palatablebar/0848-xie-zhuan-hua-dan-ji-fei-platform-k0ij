@@ -11,9 +11,11 @@ def build_ledger(intake, prepared, prepare_issues, results):
     counts["computed"] = len(results)
     balanced = counts["input"] == counts["accepted"] + counts["isolated"] + counts["duplicates"] + counts["ignored"]
     metric = sum((item.get("metric") for item in results if item.get("metric") is not None), Decimal("0"))
+    amount_total = sum((int(item.get("amount_cents") or 0) for item in results), 0)
     checks = [
         {"id": "source", "label": "来源行守恒", "ok": balanced},
         {"id": "computed", "label": "计算条目完整", "ok": counts["computed"] == len(results)},
     ]
     return {"counts": counts, "balanced": balanced, "metric_field": SPEC.get("metric_field", "metric"),
-            "metric_total": str(metric), "checks": checks, "all_checks": all_checks(checks)}
+            "metric_total": str(metric), "amount_field": "amount_cents",
+            "amount_total": str(amount_total), "checks": checks, "all_checks": all_checks(checks)}

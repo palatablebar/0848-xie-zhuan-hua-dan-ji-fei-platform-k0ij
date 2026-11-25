@@ -37,6 +37,23 @@
           <button id="hold" type="button" disabled>暂缓</button>
           <a id="download" href="#" download hidden>下载复核证据</a>
         </div>
+        <div id="amend-box" class="amend" hidden>
+          <h3>话单补正</h3>
+          <p class="hint">补正一经签发即成为当期对账金额；基于 <strong id="amend-base">当前版本</strong> 复核，落后版本会被拒绝。</p>
+          <label for="amend-label">计费条目（label）</label>
+          <input id="amend-label" type="text" placeholder="如 A|OUT">
+          <label for="amend-amount">更正后应计费分（amount_cents）</label>
+          <input id="amend-amount" type="number" min="0" step="1" placeholder="非负整数">
+          <label for="amend-reason">补正原因</label>
+          <input id="amend-reason" type="text" placeholder="如 费率勘误">
+          <div class="review-actions">
+            <button id="amend" type="button">签发补正</button>
+          </div>
+        </div>
+        <div id="version-box" class="versions" hidden>
+          <div class="panel-head"><h3>签发版本</h3><span class="hint" id="version-count">0 版</span></div>
+          <ul id="version-list"></ul>
+        </div>
       </div>
     </article>
   </section>
